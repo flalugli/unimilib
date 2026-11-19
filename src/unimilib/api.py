@@ -240,3 +240,10 @@ class LibraryUserInterface:
 
         response = await self.client.post(endpoint, json=payload)
         return response.json()
+
+    async def manage_single_booking(self,booking_code:str):
+        params={"chiave":"LGLFLV05A31Z112H"}
+        endpoint=f"entry/manage/{booking_code}"
+
+        response= await self.client.get(endpoint,params=params)
+        return response.json()
