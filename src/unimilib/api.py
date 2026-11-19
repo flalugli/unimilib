@@ -68,7 +68,7 @@ class LibraryUserInterface:
 
     async def validate_token(self) -> bool:
         # need to set a try except block
-        # makes sense to execute before time expencive operations 
+        # makes sense to execute before time expencive operations
         # to check if still logged in
         val_url = "/portalePlanningAPI/api/auth/validateJWT"
         val_check = await self.client.get(val_url)
@@ -118,10 +118,8 @@ class LibraryUserInterface:
 
         return available_libs
 
-    @alru_cache(
-        ttl=120
-    )  # max cookie age from server is 120s
-       #your choice if you want to set a threshold (ttl=90 with 30s threshold)
+    @alru_cache(ttl=120)  # max cookie age from server is 120s
+    # your choice if you want to set a threshold (ttl=90 with 30s threshold)
     async def retrieve_services(self, library_id: int | None = None) -> dict:
 
         if library_id:
@@ -155,7 +153,9 @@ class LibraryUserInterface:
             days=days_forward
         )
 
-        endpoint = f"/portalePlanningAPI/api/entry/{service_id}/schedule/{date}/{library_id}/{time_amount}?user_primary={self.user.tax_id}"
+        endpoint = f"""/portalePlanningAPI/api/entry/{service_id}/schedule/{date}
+                    /{library_id}/{time_amount}?user_primary={self.user.tax_id}"""
+
         result = await self.client.get(endpoint)
         return result.json()
 
@@ -170,13 +170,13 @@ class LibraryUserInterface:
             )
             services[s]["seats"] = seats
         return services
-    
-    #BOOKINGS#
+
+    # BOOKINGS#
 
     async def retrieve_filters(self) -> dict:
         "Returns all services and area ids"
 
-        endpoint="/portalePlanningAPI/api/reservations/filter"
+        endpoint = "/portalePlanningAPI/api/reservations/filter"
 
         headers = {
             "x-app-locale": "it",
@@ -189,11 +189,19 @@ class LibraryUserInterface:
         )
         return response.json()
 
-    async def booking_info(self,page_number:int=1,sortby:str="data",order:str="desc",filters:dict={}):
+    async def booking_info(
+        self,
+        page_number: int = 1,
+        sortby: str = "data",
+        order: str = "desc",
+        filters: dict = None,
+    ):
 
-        payload={"filters":filters,"user":self.token}
-        params={"page":page_number,"sortBy":sortby,"order":order}
-        endpoint="/portalePlanningAPI/api/reservations/2"
+        if filters is None:
+            filters = {}
+        payload = {"filters": filters, "user": self.token}
+        params = {"page": page_number, "sortBy": sortby, "order": order}
+        endpoint = "/portalePlanningAPI/api/reservations/2"
 
-        response = await self.client.post(endpoint,params=params,json=payload)
+        response = await self.client.post(endpoint, params=params, json=payload)
         return response.json()
