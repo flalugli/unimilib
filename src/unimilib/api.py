@@ -29,7 +29,7 @@ class LibraryUserInterface:
         )
 
         self.token = ""  # saved in the client memory
-        self.client_id=2 #per EasyStaff unimi è il 2 cliente
+        self.client_id = 2  # per EasyStaff unimi è il 2 cliente
 
     async def close_connection(self):
         await self.client.aclose()
@@ -76,7 +76,7 @@ class LibraryUserInterface:
 
         return val_check.json()["valid"]
 
-    async def login(self):
+    async def login(self) -> None:
         """Logins the user to the unimi website
 
         Parameters
@@ -160,7 +160,7 @@ class LibraryUserInterface:
 
     async def retrieve_all_free_seats(
         self, library_id: int, time_amount: int = 3600, days_forward: int = 0
-    ):
+    ) -> dict:
         # will call retrieve_free_seats for all services concurrently
         services = await self.retrieve_services(library_id)
         for s in services:
@@ -206,9 +206,16 @@ class LibraryUserInterface:
         response = await self.client.post(endpoint, params=params, json=payload)
         return response.json()
 
-    async def last_booking(self):
-        endpoint=f"/reservations/last/{self.client_id}"
+    async def last_booking(self) -> dict:
+        endpoint = f"/reservations/last/{self.client_id}"
         payload = {"user": self.token}
 
-        response= await self.client.post(endpoint,json=payload)
+        response = await self.client.post(endpoint, json=payload)
+        return response.json()
+
+    async def booking_exeptions(self,service_id:int) -> dict: # returns just last exeption no matter the id? 
+        endpoint=f"/reservations/exceptions/{self.client_id}/{service_id}"
+        payload = {"user": self.token}
+
+        response = await self.client.post(endpoint, json=payload)
         return response.json()
