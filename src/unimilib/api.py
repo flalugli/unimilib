@@ -245,7 +245,7 @@ class LibraryUserInterface:
         return response.json()
 
     async def manage_single_booking(self, booking_code: str):
-        params = {"chiave": "LGLFLV05A31Z112H"}
+        params = {"chiave": self.user.tax_id}
         endpoint = f"entry/manage/{booking_code}"
 
         response = await self.client.get(endpoint, params=params)
