@@ -188,3 +188,12 @@ class LibraryUserInterface:
             headers=headers,
         )
         return response.json()
+
+    async def booking_info(self,page_number:int=1,sortby:str="data",order:str="desc",filters:dict={}):
+
+        payload={"filters":filters,"user":self.token}
+        params={"page":page_number,"sortBy":sortby,"order":order}
+        endpoint="/portalePlanningAPI/api/reservations/2"
+
+        response = await self.client.post(endpoint,params=params,json=payload)
+        return response.json()
