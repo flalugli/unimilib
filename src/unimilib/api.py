@@ -204,3 +204,10 @@ class LibraryUserInterface:
 
         response = await self.client.post(endpoint, params=params, json=payload)
         return response.json()
+
+    async def last_booking(self):
+        endpoint=f"/reservations/last/2"
+        payload = {"user": self.token}
+
+        response= await self.client.post(endpoint,json=payload)
+        return response.json()
