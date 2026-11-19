@@ -170,3 +170,21 @@ class LibraryUserInterface:
             )
             services[s]["seats"] = seats
         return services
+    
+    #BOOKINGS#
+
+    async def retrieve_filters(self) -> dict:
+        "Returns all services and area ids"
+
+        endpoint="/portalePlanningAPI/api/reservations/filter"
+
+        headers = {
+            "x-app-locale": "it",
+            "x-cliente": "2",
+        }
+
+        response = await self.client.get(
+            endpoint,
+            headers=headers,
+        )
+        return response.json()
