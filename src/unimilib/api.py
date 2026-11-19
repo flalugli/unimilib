@@ -33,7 +33,7 @@ class LibraryUserInterface:
     async def close_connection(self):
         await self.client.aclose()
 
-    def build_login_payload(self, login_page: httpx2.Response):
+    def _build_login_payload(self, login_page: httpx2.Response):
         soup = BeautifulSoup(login_page.text, "html.parser")
         # find the only form in the page
         form = soup.find("form")
@@ -90,7 +90,7 @@ class LibraryUserInterface:
 
         login_page = await self.client.get(login_url)
 
-        payload = self.build_login_payload(login_page=login_page)
+        payload = self._build_login_payload(login_page=login_page)
 
         login_landing = await self.client.post(login_url, data=payload)
 
@@ -155,7 +155,7 @@ class LibraryUserInterface:
             days=days_forward
         )
 
-        endpoint = f"https://prenotabiblio.sba.unimi.it/portalePlanningAPI/api/entry/{service_id}/schedule/{date}/{library_id}/{time_amount}?user_primary={self.user.tax_id}"
+        endpoint = f"/portalePlanningAPI/api/entry/{service_id}/schedule/{date}/{library_id}/{time_amount}?user_primary={self.user.tax_id}"
         result = await self.client.get(endpoint)
         return result.json()
 
