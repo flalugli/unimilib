@@ -29,6 +29,7 @@ class LibraryUserInterface:
         )
 
         self.token = ""  # saved in the client memory
+        self.client_id=2 #per EasyStaff unimi è il 2 cliente
 
     async def close_connection(self):
         await self.client.aclose()
@@ -105,7 +106,7 @@ class LibraryUserInterface:
 
     @alru_cache(ttl=90)  # cookie would reset after 120s but we use 30s threshold
     async def retrive_available_libraries(self) -> dict:
-        endpoint = "/aree/2"
+        endpoint = f"/aree/{self.client_id}"
         data = await self.client.get(endpoint)
         available_areas = data.json()["aree"]
 
@@ -127,7 +128,7 @@ class LibraryUserInterface:
         else:
             cookie = None
 
-        endpoint = "/servizi/2"
+        endpoint = f"/servizi/{self.client_id}"
         response = await self.client.get(endpoint, cookies=cookie)
         all_seats = response.json()["servizi"]
         params = ["type", "durate_select", "numero_risorse"]
@@ -200,13 +201,13 @@ class LibraryUserInterface:
             filters = {}
         payload = {"filters": filters, "user": self.token}
         params = {"page": page_number, "sortBy": sortby, "order": order}
-        endpoint = "/reservations/2"
+        endpoint = f"/reservations/{self.client_id}"
 
         response = await self.client.post(endpoint, params=params, json=payload)
         return response.json()
 
     async def last_booking(self):
-        endpoint=f"/reservations/last/2"
+        endpoint=f"/reservations/last/{self.client_id}"
         payload = {"user": self.token}
 
         response= await self.client.post(endpoint,json=payload)
