@@ -186,8 +186,6 @@ class LibraryUserInterface:
             headers=headers,
         )
 
-        print(response.url)
-
         return response.json()
 
     async def booking_info(
