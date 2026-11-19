@@ -211,21 +211,22 @@ class LibraryUserInterface:
         sortby: str = "data",
         order: str = "desc",
         filters: dict = None,
-    ) -> dict: # will only return the ["data"]
+    ) -> dict:  # will only return the ["data"]
 
-        data_dict={}
-        #first page
-        page_1=await self.booking_info(sortby=sortby,order=order,filters=filters)
-        total_pages=int(page_1["meta"]["last_page"])
+        data_dict = {}
+        # first page
+        page_1 = await self.booking_info(sortby=sortby, order=order, filters=filters)
+        total_pages = int(page_1["meta"]["last_page"])
 
-        data_dict["data"]=page_1["data"]
+        data_dict["data"] = page_1["data"]
         if total_pages > 1:
-            for i in range(2,total_pages+1):
-                page=await self.booking_info(page_number=i,sortby=sortby,order=order,filters=filters)
-                data_dict["data"]+=page["data"]
+            for i in range(2, total_pages + 1):
+                page = await self.booking_info(
+                    page_number=i, sortby=sortby, order=order, filters=filters
+                )
+                data_dict["data"] += page["data"]
 
         return data_dict
-
 
     async def last_booking(self) -> dict:
         endpoint = f"/reservations/last/{self.client_id}"
@@ -234,16 +235,18 @@ class LibraryUserInterface:
         response = await self.client.post(endpoint, json=payload)
         return response.json()
 
-    async def booking_exeptions(self,service_id:int) -> dict: # returns just last exeption no matter the id? 
-        endpoint=f"/reservations/exceptions/{self.client_id}/{service_id}"
+    async def booking_exeptions(
+        self, service_id: int
+    ) -> dict:  # returns just last exeption no matter the id?
+        endpoint = f"/reservations/exceptions/{self.client_id}/{service_id}"
         payload = {"user": self.token}
 
         response = await self.client.post(endpoint, json=payload)
         return response.json()
 
-    async def manage_single_booking(self,booking_code:str):
-        params={"chiave":"LGLFLV05A31Z112H"}
-        endpoint=f"entry/manage/{booking_code}"
+    async def manage_single_booking(self, booking_code: str):
+        params = {"chiave": "LGLFLV05A31Z112H"}
+        endpoint = f"entry/manage/{booking_code}"
 
-        response= await self.client.get(endpoint,params=params)
+        response = await self.client.get(endpoint, params=params)
         return response.json()
