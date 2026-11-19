@@ -206,6 +206,27 @@ class LibraryUserInterface:
         response = await self.client.post(endpoint, params=params, json=payload)
         return response.json()
 
+    async def all_booking_info(
+        self,
+        sortby: str = "data",
+        order: str = "desc",
+        filters: dict = None,
+    ) -> dict: # will only return the ["data"]
+
+        data_dict={}
+        #first page
+        page_1=await self.booking_info(sortby=sortby,order=order,filters=filters)
+        total_pages=int(page_1["meta"]["last_page"])
+
+        data_dict["data"]=page_1["data"]
+        if total_pages > 1:
+            for i in range(2,total_pages+1):
+                page=await self.booking_info(page_number=i,sortby=sortby,order=order,filters=filters)
+                data_dict["data"]+=page["data"]
+
+        return data_dict
+
+
     async def last_booking(self) -> dict:
         endpoint = f"/reservations/last/{self.client_id}"
         payload = {"user": self.token}
