@@ -24,7 +24,7 @@ class LibraryUserInterface:
         self.client = httpx2.AsyncClient(
             follow_redirects=True,
             headers=headers,
-            base_url="https://prenotabiblio.sba.unimi.it",
+            base_url="https://prenotabiblio.sba.unimi.it/portalePlanningAPI/api",
             proxy=proxy_url,
         )
 
@@ -53,7 +53,7 @@ class LibraryUserInterface:
 
         return payload
 
-    def extract_token_endpoint(self, login_landing: httpx2.Response):
+    def _extract_token_endpoint(self, login_landing: httpx2.Response):
         soup = BeautifulSoup(login_landing.text, "html.parser")
         script = soup.find("script", type="text/javascript").get_text()
 
@@ -70,7 +70,7 @@ class LibraryUserInterface:
         # need to set a try except block
         # makes sense to execute before time expencive operations
         # to check if still logged in
-        val_url = "/portalePlanningAPI/api/auth/validateJWT"
+        val_url = "/auth/validateJWT"
         val_check = await self.client.get(val_url)
 
         return val_check.json()["valid"]
@@ -94,7 +94,7 @@ class LibraryUserInterface:
 
         login_landing = await self.client.post(login_url, data=payload)
 
-        token_endpoint = self.extract_token_endpoint(
+        token_endpoint = self._extract_token_endpoint(
             login_landing=login_landing
         )  # the url that lets you login to the library user page
         # we populate the UnimiUser data
@@ -102,12 +102,10 @@ class LibraryUserInterface:
         await self.client.get(
             token_endpoint
         )  # server will release a cookie that will be stored in the client
-        # we set the base url
-        self.client.base_url = "https://prenotabiblio.sba.unimi.it"
 
     @alru_cache(ttl=90)  # cookie would reset after 120s but we use 30s threshold
     async def retrive_available_libraries(self) -> dict:
-        endpoint = "/portalePlanningAPI/api/aree/2"
+        endpoint = "/aree/2"
         data = await self.client.get(endpoint)
         available_areas = data.json()["aree"]
 
@@ -129,7 +127,7 @@ class LibraryUserInterface:
         else:
             cookie = None
 
-        endpoint = "/portalePlanningAPI/api/servizi/2"
+        endpoint = "/servizi/2"
         response = await self.client.get(endpoint, cookies=cookie)
         all_seats = response.json()["servizi"]
         params = ["type", "durate_select", "numero_risorse"]
@@ -153,7 +151,7 @@ class LibraryUserInterface:
             days=days_forward
         )
 
-        endpoint = f"""/portalePlanningAPI/api/entry/{service_id}/schedule/{date}
+        endpoint = f"""/entry/{service_id}/schedule/{date}
                     /{library_id}/{time_amount}?user_primary={self.user.tax_id}"""
 
         result = await self.client.get(endpoint)
@@ -176,7 +174,7 @@ class LibraryUserInterface:
     async def retrieve_filters(self) -> dict:
         "Returns all services and area ids"
 
-        endpoint = "/portalePlanningAPI/api/reservations/filter"
+        endpoint = "/reservations/filter"
 
         headers = {
             "x-app-locale": "it",
@@ -187,6 +185,9 @@ class LibraryUserInterface:
             endpoint,
             headers=headers,
         )
+
+        print(response.url)
+
         return response.json()
 
     async def booking_info(
@@ -195,13 +196,13 @@ class LibraryUserInterface:
         sortby: str = "data",
         order: str = "desc",
         filters: dict = None,
-    ):
+    ) -> dict:
 
         if filters is None:
             filters = {}
         payload = {"filters": filters, "user": self.token}
         params = {"page": page_number, "sortBy": sortby, "order": order}
-        endpoint = "/portalePlanningAPI/api/reservations/2"
+        endpoint = "/reservations/2"
 
         response = await self.client.post(endpoint, params=params, json=payload)
         return response.json()
