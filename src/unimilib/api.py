@@ -250,3 +250,22 @@ class LibraryUserInterface:
 
         response = await self.client.get(endpoint, params=params)
         return response.json()
+
+    async def single_booking_info(self,booking_id:str)->int:
+        """Returns the id of the service which the booking id refers to
+
+        Parameters
+        ----------
+        booking_id : str
+            booking alphanumerical code
+
+        Returns
+        -------
+        int
+            service id number
+        """
+        endpoint=f"/entry/{booking_id}/info"
+        params={"chiave":self.user.tax_id} 
+
+        response=await self.client.get(endpoint,params=params)
+        return response.json()
