@@ -68,11 +68,11 @@ class LibraryUserInterface:
 
         return token_endpoint
 
-    async def _refresh_cookie(self,method_name="retrive_available_libraries"):
-        f = getattr(self, method_name)  
+    async def _refresh_cookie(self, method_name="retrive_available_libraries"):
+        f = getattr(self, method_name)
         if not callable(f):
             raise AttributeError(f"Method '{method_name}' not found")
-        await f() # refresh the cookie
+        await f()  # refresh the cookie
 
     async def validate_token(self) -> bool:
         # need to set a try except block
@@ -167,7 +167,7 @@ class LibraryUserInterface:
     async def retrieve_all_free_seats(
         self, library_id: int, time_amount: int = 3600, days_forward: int = 0
     ) -> dict:
-        # will call retrieve_free_seats for all services concurrently -> TODO cuncurrency 
+        # will call retrieve_free_seats for all services concurrently->TODO cuncurrency
         services = await self.retrieve_services(library_id)
         for s in services:
             seats = await self.retrieve_free_seats(
@@ -257,7 +257,7 @@ class LibraryUserInterface:
         response = await self.client.get(endpoint, params=params)
         return response.json()
 
-    async def single_booking_info(self,booking_id:str)->int:
+    async def single_booking_info(self, booking_id: str) -> int:
         """Returns the id of the service which the booking id refers to
 
         Parameters
@@ -270,64 +270,66 @@ class LibraryUserInterface:
         int
             service id number
         """
-        endpoint=f"/entry/{booking_id}/info"
-        params={"chiave":self.user.tax_id} 
+        endpoint = f"/entry/{booking_id}/info"
+        params = {"chiave": self.user.tax_id}
 
-        response=await self.client.get(endpoint,params=params)
+        response = await self.client.get(endpoint, params=params)
         return response.json()
 
-    async def _update_booking(self,booking_id:str,update_to:dict): 
+    async def _update_booking(self, booking_id: str, update_to: dict):
 
         await self._refresh_cookie()
-        await asyncio.sleep(10) # otherwise it would call raise an error
-        
-        endpoint=f"entry/update/{booking_id}"
-        params={"chiave":self.user.tax_id} 
+        await asyncio.sleep(10)  # otherwise it would call raise an error
 
-        base="https://prenotabiblio.sba.unimi.it"
+        endpoint = f"entry/update/{booking_id}"
+        params = {"chiave": self.user.tax_id}
+
+        base = "https://prenotabiblio.sba.unimi.it"
         referer_url = str(
             httpx2.URL(
                 f"{base}/portalePlanning/biblio/gestisci/show/{booking_id}",
-                params={"primaria": self.user.tax_id}
+                params={"primaria": self.user.tax_id},
             )
         )
-        headers = {
-            "referer": referer_url
-        }
+        headers = {"referer": referer_url}
 
-        response = await self.client.post(endpoint,json=update_to,params=params,headers=headers)
+        response = await self.client.post(
+            endpoint, json=update_to, params=params, headers=headers
+        )
 
         return response.json()
 
-    async def free_up_seat(self,booking_id:str):
-        return await self._update_booking(booking_id=booking_id,update_to={"type":"libera_posto"})
+    async def free_up_seat(self, booking_id: str):
+        return await self._update_booking(
+            booking_id=booking_id, update_to={"type": "libera_posto"}
+        )
 
-    async def delete_booking(self,booking_id:str):
+    async def delete_booking(self, booking_id: str):
 
         await self._refresh_cookie()
 
-        endpoint=f"entry/delete/{booking_id}"
-        params={"chiave":self.user.tax_id}
+        endpoint = f"entry/delete/{booking_id}"
+        params = {"chiave": self.user.tax_id}
 
-        base="https://prenotabiblio.sba.unimi.it"
+        base = "https://prenotabiblio.sba.unimi.it"
         referer_url = str(
             httpx2.URL(
                 f"{base}/portalePlanning/biblio/gestisci/show/{booking_id}",
-                params={"primaria": self.user.tax_id}
+                params={"primaria": self.user.tax_id},
             )
         )
-        headers = {
-            "referer": referer_url
-        }
+        headers = {"referer": referer_url}
 
-        result = await self.client.post(endpoint,params=params,headers=headers)
+        result = await self.client.post(endpoint, params=params, headers=headers)
         return result.json()
 
-    async def update_booking_info(self,booking_id:str,new_tax_id:str,new_fullname:str,new_email:str):
-        new_info={
-            "codice_fiscale":new_tax_id,
-            "cognome_nome":new_fullname,
-            "email":new_email
+    async def update_booking_info(
+        self, booking_id: str, new_tax_id: str, new_fullname: str, new_email: str
+    ):
+        new_info = {
+            "codice_fiscale": new_tax_id,
+            "cognome_nome": new_fullname,
+            "email": new_email,
         }
-        result=await self._update_booking(booking_id,update_to=new_info)  
+        result = await self._update_booking(booking_id, update_to=new_info)
         return result
