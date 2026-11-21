@@ -279,7 +279,7 @@ class LibraryUserInterface:
     async def _update_booking(self,booking_id:str,update_to:dict): 
 
         await self._refresh_cookie()
-        await asyncio.sleep(15) # otherwise it would call raise an error
+        await asyncio.sleep(10) # otherwise it would call raise an error
         
         endpoint=f"entry/update/{booking_id}"
         params={"chiave":self.user.tax_id} 
@@ -322,3 +322,12 @@ class LibraryUserInterface:
 
         result = await self.client.post(endpoint,params=params,headers=headers)
         return result.json()
+
+    async def update_booking_info(self,booking_id:str,new_tax_id:str,new_fullname:str,new_email:str):
+        new_info={
+            "codice_fiscale":new_tax_id,
+            "cognome_nome":new_fullname,
+            "email":new_email
+        }
+        result=await self._update_booking(booking_id,update_to=new_info)  
+        return result
