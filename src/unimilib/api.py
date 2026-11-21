@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 import zoneinfo
@@ -67,6 +68,12 @@ class LibraryUserInterface:
 
         return token_endpoint
 
+    async def _refresh_cookie(self,method_name="retrive_available_libraries"):
+        f = getattr(self, method_name)  
+        if not callable(f):
+            raise AttributeError(f"Method '{method_name}' not found")
+        await f() # refresh the cookie
+
     async def validate_token(self) -> bool:
         # need to set a try except block
         # makes sense to execute before time expencive operations
@@ -87,7 +94,7 @@ class LibraryUserInterface:
         if not self.user:
             raise MissingUserError("No user passed")
 
-        login_url = "https://cas.unimi.it/login?service=https%3A%2F%2Fprenotabiblio.sba.unimi.it%2Fauth%2Fauth_planning.php"
+        login_url = "https://cas.unimi.it/login?service=https://prenotabiblio.sba.unimi.it/auth/auth_planning.php"
 
         login_page = await self.client.get(login_url)
 
@@ -145,15 +152,14 @@ class LibraryUserInterface:
         time_amount: int = 3600,
         days_forward: int = 0,
     ) -> dict:
-        await self.retrive_available_libraries()  # refresh the cookie
+        await self._refresh_cookie()
 
         tz_roma = zoneinfo.ZoneInfo("Europe/Rome")
         date = datetime.datetime.now(tz_roma).date() + datetime.timedelta(
             days=days_forward
         )
 
-        endpoint = f"""/entry/{service_id}/schedule/{date}
-                    /{library_id}/{time_amount}?user_primary={self.user.tax_id}"""
+        endpoint = f"/entry/{service_id}/schedule/{date}/{library_id}/{time_amount}?user_primary={self.user.tax_id}"
 
         result = await self.client.get(endpoint)
         return result.json()
@@ -161,7 +167,7 @@ class LibraryUserInterface:
     async def retrieve_all_free_seats(
         self, library_id: int, time_amount: int = 3600, days_forward: int = 0
     ) -> dict:
-        # will call retrieve_free_seats for all services concurrently
+        # will call retrieve_free_seats for all services concurrently -> TODO cuncurrency 
         services = await self.retrieve_services(library_id)
         for s in services:
             seats = await self.retrieve_free_seats(
@@ -170,7 +176,7 @@ class LibraryUserInterface:
             services[s]["seats"] = seats
         return services
 
-    # BOOKINGS#
+    # BOOKINGS #
 
     async def retrieve_filters(self) -> dict:
         "Returns all services and area ids"
@@ -179,7 +185,7 @@ class LibraryUserInterface:
 
         headers = {
             "x-app-locale": "it",
-            "x-cliente": "2",
+            "x-cliente": self.client_id,
         }
 
         response = await self.client.get(
@@ -269,3 +275,50 @@ class LibraryUserInterface:
 
         response=await self.client.get(endpoint,params=params)
         return response.json()
+
+    async def _update_booking(self,booking_id:str,update_to:dict): 
+
+        await self._refresh_cookie()
+        await asyncio.sleep(15) # otherwise it would call raise an error
+        
+        endpoint=f"entry/update/{booking_id}"
+        params={"chiave":self.user.tax_id} 
+
+        base="https://prenotabiblio.sba.unimi.it"
+        referer_url = str(
+            httpx2.URL(
+                f"{base}/portalePlanning/biblio/gestisci/show/{booking_id}",
+                params={"primaria": self.user.tax_id}
+            )
+        )
+        headers = {
+            "referer": referer_url
+        }
+
+        response = await self.client.post(endpoint,json=update_to,params=params,headers=headers)
+
+        return response.json()
+
+    async def free_up_seat(self,booking_id:str):
+        return await self._update_booking(booking_id=booking_id,update_to={"type":"libera_posto"})
+
+    async def delete_booking(self,booking_id:str):
+
+        await self._refresh_cookie()
+
+        endpoint=f"entry/delete/{booking_id}"
+        params={"chiave":self.user.tax_id}
+
+        base="https://prenotabiblio.sba.unimi.it"
+        referer_url = str(
+            httpx2.URL(
+                f"{base}/portalePlanning/biblio/gestisci/show/{booking_id}",
+                params={"primaria": self.user.tax_id}
+            )
+        )
+        headers = {
+            "referer": referer_url
+        }
+
+        result = await self.client.post(endpoint,params=params,headers=headers)
+        return result.json()
