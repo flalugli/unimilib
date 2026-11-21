@@ -84,12 +84,12 @@ class LibraryUserInterface:
         return val_check.json()["valid"]
 
     async def login(self) -> None:
-        """Logins the user to the unimi website
+        """Logs in a UnimiUser to the library platform
 
-        Parameters
-        ----------
-        user : UnimiUser
-            User registered on the unimi website
+        Raises
+        ------
+        MissingUserError
+            Error if no user to login into is passed
         """
         if not self.user:
             raise MissingUserError("No user passed")
