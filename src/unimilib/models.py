@@ -16,7 +16,7 @@ class UnimiUser:
 
     email: str
     password: SecretStr  # so it wont be printed
-    user_type = "S"  # type student, will try to expand this class to every type of user
+    user_type:str = "S"  # type student, will try to expand this class to every type of user
     # we get these from the token after login
     name: str = field(init=False)
     surname: str = field(init=False)

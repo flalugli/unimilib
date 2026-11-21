@@ -26,7 +26,7 @@ class LibraryUserInterface:
             follow_redirects=True,
             headers=headers,
             base_url="https://prenotabiblio.sba.unimi.it/portalePlanningAPI/api",
-            proxy=proxy_url,
+            proxy=str(proxy_url) if proxy_url is not None else None,
         )
 
         self.token = ""  # saved in the client memory
