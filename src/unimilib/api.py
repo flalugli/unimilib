@@ -49,8 +49,8 @@ class LibraryUserInterface:
 
         # add the necessary user data
 
-        payload["username"] = (self.user.email,)
-        payload["selTipoUtente"] = (self.user.user_type,)
+        payload["username"] = self.user.email
+        payload["selTipoUtente"] = self.user.user_type
         payload["password"] = self.user.password.get_secret_value()
 
         return payload
@@ -68,7 +68,7 @@ class LibraryUserInterface:
 
         return token_endpoint
 
-    async def _refresh_cookie(self, method_name="retrive_available_libraries"):
+    async def _refresh_cookie(self, method_name: str = "retrieve_available_libraries"):
         f = getattr(self, method_name)
         if not callable(f):
             raise AttributeError(f"Method '{method_name}' not found")
@@ -106,13 +106,13 @@ class LibraryUserInterface:
             login_landing=login_landing
         )  # the url that lets you login to the library user page
         # we populate the UnimiUser data
-        self.user.get_data_from_jsw(self.token)
+        self.user.get_data_from_jwt(self.token)
         await self.client.get(
             token_endpoint
         )  # server will release a cookie that will be stored in the client
 
     @alru_cache(ttl=90)  # cookie would reset after 120s but we use 30s threshold
-    async def retrive_available_libraries(self) -> dict:
+    async def retrieve_available_libraries(self) -> dict:
         endpoint = f"/aree/{self.client_id}"
         data = await self.client.get(endpoint)
         available_areas = data.json()["aree"]
@@ -241,9 +241,9 @@ class LibraryUserInterface:
         response = await self.client.post(endpoint, json=payload)
         return response.json()
 
-    async def booking_exeptions(
+    async def booking_exceptions(
         self, service_id: int
-    ) -> dict:  # returns just last exeption no matter the id?
+    ) -> dict:  # returns just last exception no matter the id?
         endpoint = f"/reservations/exceptions/{self.client_id}/{service_id}"
         payload = {"user": self.token}
 
