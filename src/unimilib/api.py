@@ -14,8 +14,17 @@ from unimilib.models import MissingUserError, UnimiUser
 
 
 class LibraryUserInterface:
-    def __init__(self, unimi_user: UnimiUser | None = None, proxy_url: HttpUrl = None):
+    """Async interface for interacting with the UniMi library booking portal."""
 
+    def __init__(self, unimi_user: UnimiUser | None = None, proxy_url: HttpUrl = None):
+        """
+        Parameters
+        ----------
+        unimi_user : UnimiUser | None, optional
+            User credentials for authenticated requests, by default None.
+        proxy_url : HttpUrl, optional
+            Optional HTTP proxy URL for outgoing requests, by default None.
+        """
         self.user = unimi_user
 
         # generate headers
@@ -33,9 +42,22 @@ class LibraryUserInterface:
         self.client_id = 2  # per EasyStaff unimi è il 2 cliente
 
     async def close_connection(self):
+        """Closes the underlying async HTTP client session."""
         await self.client.aclose()
 
     def _build_login_payload(self, login_page: httpx2.Response):
+        """Builds the CAS login form payload from the login page HTML.
+
+        Parameters
+        ----------
+        login_page : httpx2.Response
+            HTTP response containing the CAS login page HTML.
+
+        Returns
+        -------
+        dict
+            Form payload including hidden inputs and user credentials.
+        """
         soup = BeautifulSoup(login_page.text, "html.parser")
         # find the only form in the page
         form = soup.find("form")
@@ -56,6 +78,18 @@ class LibraryUserInterface:
         return payload
 
     def _extract_token_endpoint(self, login_landing: httpx2.Response):
+        """Extracts the token endpoint URL and JWT from the login landing page.
+
+        Parameters
+        ----------
+        login_landing : httpx2.Response
+            HTTP response returned after submitting the CAS login form.
+
+        Returns
+        -------
+        str
+            Endpoint URL used to initialize the authenticated library session.
+        """
         soup = BeautifulSoup(login_landing.text, "html.parser")
         script = soup.find("script", type="text/javascript").get_text()
 
@@ -69,12 +103,32 @@ class LibraryUserInterface:
         return token_endpoint
 
     async def _refresh_cookie(self, method_name: str = "retrieve_available_libraries"):
+        """Refreshes the session cookie by invoking a lightweight API method.
+
+        Parameters
+        ----------
+        method_name : str, optional
+            Name of the method to call to refresh the cookie, by default
+            "retrieve_available_libraries".
+
+        Raises
+        ------
+        AttributeError
+            If the specified method name is not callable on this instance.
+        """
         f = getattr(self, method_name)
         if not callable(f):
             raise AttributeError(f"Method '{method_name}' not found")
         await f()  # refresh the cookie
 
     async def validate_token(self) -> bool:
+        """Checks whether the current JWT session token is still valid.
+
+        Returns
+        -------
+        bool
+            True if the token is valid, False otherwise.
+        """
         # need to set a try except block
         # makes sense to execute before time expencive operations
         # to check if still logged in
@@ -113,6 +167,13 @@ class LibraryUserInterface:
 
     @alru_cache(ttl=90)  # cookie would reset after 120s but we use 30s threshold
     async def retrieve_available_libraries(self) -> dict:
+        """Retrieves all available libraries from the booking portal.
+
+        Returns
+        -------
+        dict
+            Mapping of library IDs to library names.
+        """
         endpoint = f"/aree/{self.client_id}"
         data = await self.client.get(endpoint)
         available_areas = data.json()["aree"]
@@ -127,7 +188,19 @@ class LibraryUserInterface:
     @alru_cache(ttl=120)  # max cookie age from server is 120s
     # your choice if you want to set a threshold (ttl=90 with 30s threshold)
     async def retrieve_services(self, library_id: int | None = None) -> dict:
+        """Retrieves available services, optionally filtered by library.
 
+        Parameters
+        ----------
+        library_id : int | None, optional
+            Library ID to filter services by, by default None.
+
+        Returns
+        -------
+        dict
+            Mapping of service IDs to their type, duration options, and
+            resource counts.
+        """
         if library_id:
             filtro = {"area": {"id": library_id}}
             cookie_value = quote(json.dumps(filtro, separators=(",", ":")))
@@ -152,6 +225,24 @@ class LibraryUserInterface:
         time_amount: int = 3600,
         days_forward: int = 0,
     ) -> dict:
+        """Retrieves available seat slots for a specific library and service.
+
+        Parameters
+        ----------
+        library_id : int
+            ID of the library.
+        service_id : int
+            ID of the service within the library.
+        time_amount : int, optional
+            Booking duration in seconds, by default 3600.
+        days_forward : int, optional
+            Number of days ahead of today (Europe/Rome timezone), by default 0.
+
+        Returns
+        -------
+        dict
+            JSON schedule response with available time slots.
+        """
         await self._refresh_cookie()
 
         tz_roma = zoneinfo.ZoneInfo("Europe/Rome")
@@ -218,7 +309,22 @@ class LibraryUserInterface:
         order: str = "desc",
         filters: dict = None,
     ) -> dict:  # will only return the ["data"]
+        """Retrieves all pages of the user's bookings combined.
 
+        Parameters
+        ----------
+        sortby : str, optional
+            Field to sort bookings by, by default "data".
+        order : str, optional
+            Sort direction (``"asc"`` or ``"desc"``), by default "desc".
+        filters : dict, optional
+            Filter criteria to apply to the query, by default None.
+
+        Returns
+        -------
+        dict
+            Dictionary with a single ``"data"`` key containing all bookings.
+        """
         data_dict = {}
         # first page
         page_1 = await self.booking_info(sortby=sortby, order=order, filters=filters)
@@ -235,6 +341,13 @@ class LibraryUserInterface:
         return data_dict
 
     async def last_booking(self) -> dict:
+        """Retrieves the user's most recent booking.
+
+        Returns
+        -------
+        dict
+            JSON response containing details of the latest booking.
+        """
         endpoint = f"/reservations/last/{self.client_id}"
         payload = {"user": self.token}
 
@@ -251,6 +364,18 @@ class LibraryUserInterface:
         return response.json()
 
     async def manage_single_booking(self, booking_code: str):
+        """Retrieves management details for a single booking.
+
+        Parameters
+        ----------
+        booking_code : str
+            Alphanumerical booking code.
+
+        Returns
+        -------
+        dict
+            JSON response containing booking management data.
+        """
         params = {"chiave": self.user.tax_id}
         endpoint = f"entry/manage/{booking_code}"
 
@@ -277,7 +402,20 @@ class LibraryUserInterface:
         return response.json()
 
     async def _update_booking(self, booking_id: str, update_to: dict):
+        """Sends an update request for an existing booking.
 
+        Parameters
+        ----------
+        booking_id : str
+            Alphanumerical booking code.
+        update_to : dict
+            Payload describing the update to apply.
+
+        Returns
+        -------
+        dict
+            JSON response returned by the update endpoint.
+        """
         await self._refresh_cookie()
         await asyncio.sleep(10)  # otherwise it would call raise an error
 
@@ -300,12 +438,35 @@ class LibraryUserInterface:
         return response.json()
 
     async def free_up_seat(self, booking_id: str):
+        """Releases the seat associated with an active booking.
+
+        Parameters
+        ----------
+        booking_id : str
+            Alphanumerical booking code.
+
+        Returns
+        -------
+        dict
+            JSON response returned by the update endpoint.
+        """
         return await self._update_booking(
             booking_id=booking_id, update_to={"type": "libera_posto"}
         )
 
     async def delete_booking(self, booking_id: str):
+        """Cancels and deletes an existing booking.
 
+        Parameters
+        ----------
+        booking_id : str
+            Alphanumerical booking code.
+
+        Returns
+        -------
+        dict
+            JSON response returned by the delete endpoint.
+        """
         await self._refresh_cookie()
 
         endpoint = f"entry/delete/{booking_id}"
@@ -326,6 +487,24 @@ class LibraryUserInterface:
     async def update_booking_info(
         self, booking_id: str, new_tax_id: str, new_fullname: str, new_email: str
     ):
+        """Updates the attendee information on an existing booking.
+
+        Parameters
+        ----------
+        booking_id : str
+            Alphanumerical booking code.
+        new_tax_id : str
+            New tax ID (codice fiscale) for the booking.
+        new_fullname : str
+            New full name (surname and name) for the booking.
+        new_email : str
+            New email address for the booking.
+
+        Returns
+        -------
+        dict
+            JSON response returned by the update endpoint.
+        """
         new_info = {
             "codice_fiscale": new_tax_id,
             "cognome_nome": new_fullname,
